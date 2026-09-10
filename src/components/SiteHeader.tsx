@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { useCart } from "./CartProvider";
+import SiteLogo from "./SiteLogo";
 import { useWishlist } from "./WishlistProvider";
 
 type User = { id: number; name: string; email: string };
@@ -42,9 +43,8 @@ export default function SiteHeader({ showSearch = true }: { showSearch?: boolean
   return (
     <header className="site-header">
       <div className="header-inner">
-        <Link href="/" className="logo">
-          <span className="logo-dharma">DHARMA</span>
-          <span className="logo-kart">KART</span>
+        <Link href="/" className="logo" aria-label="DharmaKart home">
+          <SiteLogo />
         </Link>
         {showSearch ? (
           <form onSubmit={onSearch} className="search-wrap">

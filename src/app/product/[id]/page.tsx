@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Product } from "@/components/ProductCard";
 import ProductCarousel from "@/components/ProductCarousel";
+import ProductImage from "@/components/ProductImage";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import StoreShell from "@/components/StoreShell";
@@ -104,7 +105,7 @@ export default function ProductPage() {
                     className={i === activeImg ? "active" : ""}
                     onClick={() => setActiveImg(i)}
                   >
-                    <img src={img} alt={`${product.name} ${i + 1}`} />
+                    <ProductImage src={img} alt={`${product.name} ${i + 1}`} />
                   </button>
                 ))}
               </div>
@@ -112,7 +113,7 @@ export default function ProductPage() {
             <div className="gallery-main">
               {discount > 0 ? <span className="badge-sale">{discount}% OFF</span> : null}
               <WishButton product={{ id: product.id, name: product.name, image: product.image, salePrice: product.salePrice }} />
-              <img src={gallery[activeImg] || product.image} alt={product.name} />
+              <ProductImage src={gallery[activeImg] || product.image} alt={product.name} />
             </div>
           </div>
 

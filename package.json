@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "images:urls": "tsx scripts/import-xlsx-image-urls.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "xlsx": "^0.18.5"
   }
 }

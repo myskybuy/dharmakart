@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { COMPANY } from "@/lib/policies";
+import SiteLogo from "./SiteLogo";
 
 export default function SiteFooter() {
   const [email, setEmail] = useState("");
@@ -19,9 +20,8 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <div className="footer-grid">
         <div>
-          <Link href="/" className="footer-logo">
-            <span className="logo-dharma">DHARMA</span>
-            <span className="logo-kart">KART</span>
+          <Link href="/" className="footer-logo" aria-label="DharmaKart home">
+            <SiteLogo />
           </Link>
           <p>
             {COMPANY.brand} is your one-stop shop for fashion, footwear &amp; accessories, operated by{" "}

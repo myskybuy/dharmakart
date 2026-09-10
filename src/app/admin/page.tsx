@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import SiteLogo from "@/components/SiteLogo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function AdminLoginPage() {
       <div className="login-shell">
         <form className="login-box" onSubmit={onSubmit}>
           <div className="brand">
-            <span>Dharma</span>Kart
+            <SiteLogo />
           </div>
           <h1>Admin Login</h1>
           <div className="form-row">

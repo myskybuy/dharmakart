@@ -35,12 +35,15 @@ a { color: inherit; text-decoration: none; }
 }
 .login-box .brand {
   text-align: center;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
   margin-bottom: 18px;
 }
-.login-box .brand span { color: var(--a-accent); }
+.login-box .brand img {
+  height: 48px;
+  width: auto;
+  max-width: 100%;
+  display: inline-block;
+  border-radius: 8px;
+}
 .login-box h1 { font-size: 22px; margin-bottom: 4px; text-align: center; }
 .login-box p { color: var(--a-muted); font-size: 13.5px; margin-bottom: 24px; }
 .login-box input {
@@ -60,8 +63,8 @@ a { color: inherit; text-decoration: none; }
   width: 220px; background: var(--a-surface); border-right: 1px solid var(--a-border);
   padding: 24px 16px; display: flex; flex-direction: column;
 }
-.sidebar .brand { font-size: 19px; font-weight: 700; margin-bottom: 30px; padding-left: 8px; }
-.sidebar .brand span { color: var(--a-accent); }
+.sidebar .brand { margin-bottom: 24px; padding: 0; }
+.sidebar .brand img { width: 100%; height: auto; display: block; border-radius: 8px; }
 .sidebar a.nav-link {
   display: block; padding: 11px 12px; border-radius: 8px; font-size: 14px; font-weight: 500;
   color: var(--a-muted); margin-bottom: 4px; cursor: pointer;

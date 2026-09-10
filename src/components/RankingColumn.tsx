@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatInr, Product, productDiscount, StarRating } from "./ProductCard";
+import ProductImage from "./ProductImage";
 
 export default function RankingColumn({
   title,
@@ -32,7 +33,7 @@ export default function RankingColumn({
             return (
               <Link key={p.id} href={`/product/${p.id}`} className="fk-rank-row">
                 <div className="fk-rank-thumb">
-                  <img src={p.image} alt="" />
+                  <ProductImage src={p.image} alt="" />
                 </div>
                 <div className="fk-rank-info">
                   <h3>{p.name}</h3>

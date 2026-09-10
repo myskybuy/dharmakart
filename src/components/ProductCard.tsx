@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCart } from "./CartProvider";
+import ProductImage from "./ProductImage";
 import WishButton from "./WishButton";
 
 export type Product = {
@@ -73,7 +74,7 @@ export default function ProductCard({
       <div className="product-card compact">
         <div className="thumb-wrap">
           <Link href={`/product/${product.id}`} className="thumb">
-            <img src={product.image} alt={product.name} />
+            <ProductImage src={product.image} alt={product.name} />
           </Link>
           <WishButton product={{ id: product.id, name: product.name, image: product.image, salePrice: product.salePrice }} />
         </div>
@@ -104,7 +105,7 @@ export default function ProductCard({
       <div className="thumb-wrap">
         <Link href={`/product/${product.id}`} className="thumb">
           {discount > 0 ? <span className="badge-sale">{discount}% OFF</span> : null}
-          <img src={product.image} alt={product.name} />
+          <ProductImage src={product.image} alt={product.name} />
         </Link>
         <WishButton product={{ id: product.id, name: product.name, image: product.image, salePrice: product.salePrice }} />
       </div>

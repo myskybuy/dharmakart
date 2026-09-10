@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import SiteLogo from "@/components/SiteLogo";
 
 type Product = {
   id: number;
@@ -149,7 +150,7 @@ export default function AdminDashboard() {
       <div className="admin-shell">
         <div className="sidebar">
           <div className="brand">
-            <span>Dharma</span>Kart
+            <SiteLogo />
           </div>
           {["products", "categories", "coupons", "banner", "orders", "customers"].map((t) => (
             <a key={t} className={`nav-link ${tab === t ? "active" : ""}`} onClick={() => switchTab(t)}>
