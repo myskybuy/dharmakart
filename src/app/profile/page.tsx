@@ -14,6 +14,10 @@ type Tab = "info" | "addresses" | "orders" | "wishlist" | "security";
 type User = { id: number; name: string; email: string; phone?: string };
 type OrderItem = { id?: number; name: string; image?: string; salePrice: number; qty: number };
 type Order = { id: number; total: number; status: string; createdAt: string; items: OrderItem[] };
+
+function orderCode(id: number) {
+  return `DK-ORD-${String(id).padStart(6, "0")}`;
+}
 type Address = {
   id: number;
   label: string;
@@ -126,7 +130,7 @@ export default function ProfilePage() {
     }
     setOrders((prev) => prev.map((o) => (o.id === cancelTarget.id ? { ...o, status: "Cancelled" } : o)));
     setCancelTarget(null);
-    toast.success(`Order #${cancelTarget.id} cancelled`);
+    toast.success(`Order ${orderCode(cancelTarget.id)} cancelled`);
   }
 
   async function refreshAddresses() {
@@ -384,7 +388,7 @@ export default function ProfilePage() {
                   return (
                     <div key={o.id} className="order-card">
                       <div className="order-head">
-                        <span>Order #{o.id}</span>
+                        <span>{orderCode(o.id)}</span>
                         <span className={`status-tag ${o.status}`}>{o.status}</span>
                       </div>
                       <div className="order-meta">
@@ -494,7 +498,7 @@ export default function ProfilePage() {
             <button type="button" className="auth-modal-close" onClick={closeCancelModal} aria-label="Close" disabled={cancelling}>
               ×
             </button>
-            <p className="confirm-modal-kicker">Order #{cancelTarget.id}</p>
+            <p className="confirm-modal-kicker">{orderCode(cancelTarget.id)}</p>
             <h2 id="cancel-order-title">Cancel this order?</h2>
             <p className="confirm-modal-copy">
               This order has not been dispatched yet. If you cancel, it cannot be restored. You can place a new order anytime.
