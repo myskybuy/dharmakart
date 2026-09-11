@@ -48,8 +48,9 @@ a { color: inherit; text-decoration: none; }
 .login-box p { color: var(--a-muted); font-size: 13.5px; margin-bottom: 24px; }
 .login-box input {
   width: 100%; padding: 11px 14px; margin-bottom: 14px;
-  border-radius: 8px; border: 1px solid var(--a-border);
-  background: #0f1516; color: var(--a-text); font-size: 14px;
+  border-radius: 8px; border: 1px solid #cfc8dc;
+  background: #fff; color: #1a1525; font-size: 14px;
+  -webkit-text-fill-color: #1a1525; caret-color: #1a1525; color-scheme: light;
 }
 .login-box button {
   width: 100%; padding: 12px; border: none; border-radius: 8px;
@@ -102,9 +103,38 @@ td img { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; }
 .modal-box h2 { margin-top: 0; font-size: 19px; }
 .form-row { margin-bottom: 14px; }
 .form-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--a-muted); }
-.form-row input, .form-row textarea, .form-row select {
-  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--a-border);
-  background: #0f1516; color: var(--a-text); font-size: 14px; font-family: inherit;
+.admin-shell .form-row input:not([type="checkbox"]):not([type="radio"]),
+.admin-shell .form-row textarea,
+.admin-shell .form-row select,
+.modal-box .form-row input:not([type="checkbox"]):not([type="radio"]),
+.modal-box .form-row textarea,
+.modal-box .form-row select {
+  width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #cfc8dc;
+  background: #fff; color: #1a1525; font-size: 14px; font-family: inherit;
+  -webkit-text-fill-color: #1a1525; caret-color: #1a1525; color-scheme: light;
+}
+.admin-shell .form-row input::placeholder,
+.modal-box .form-row input::placeholder,
+.login-box input::placeholder {
+  color: #6b6578; -webkit-text-fill-color: #6b6578;
+}
+.admin-shell .form-row input:focus,
+.admin-shell .form-row textarea:focus,
+.admin-shell .form-row select:focus,
+.modal-box .form-row input:focus,
+.modal-box .form-row textarea:focus,
+.modal-box .form-row select:focus,
+.login-box input:focus {
+  outline: none; background: #fff; color: #1a1525; -webkit-text-fill-color: #1a1525;
+  border-color: var(--a-accent); box-shadow: 0 0 0 3px rgba(217,164,65,.28);
+}
+.admin-shell input:-webkit-autofill,
+.admin-shell input:-webkit-autofill:focus,
+.modal-box input:-webkit-autofill,
+.login-box input:-webkit-autofill {
+  -webkit-text-fill-color: #1a1525;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 9999s ease-out;
 }
 .form-actions { display: flex; gap: 10px; margin-top: 18px; }
 

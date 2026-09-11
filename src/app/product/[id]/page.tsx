@@ -14,8 +14,9 @@ import { useWishlist } from "@/components/WishlistProvider";
 import WishButton from "@/components/WishButton";
 import PageLoader from "@/components/PageLoader";
 import { getPdpCopy } from "@/lib/product-copy";
+import { getSizeChart, rowMatchesOption } from "@/lib/size-charts";
 
-type AccordionId = "details" | "specs" | "delivery" | "care";
+type AccordionId = "details" | "specs" | "sizechart" | "delivery" | "care";
 
 export default function ProductPage() {
   const params = useParams();
@@ -28,12 +29,14 @@ export default function ProductPage() {
   const [size, setSize] = useState("");
   const [related, setRelated] = useState<Product[]>([]);
   const [openAcc, setOpenAcc] = useState<AccordionId>("details");
+  const [showChart, setShowChart] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     setRelated([]);
     setQty(1);
     setOpenAcc("details");
+    setShowChart(false);
     fetch(`/api/products/${params.id}`)
       .then((r) => r.json())
       .then((p: Product) => {
@@ -75,6 +78,7 @@ export default function ProductPage() {
   const inCartQty = cart.find((i) => i.id === product.id)?.qty || 0;
   const copy = getPdpCopy(product);
   const specRows = [...copy.specs, { label: "Max quantity", value: `${maxQty} per item` }];
+  const sizeChart = getSizeChart(product);
 
   function toggleAcc(id: AccordionId) {
     setOpenAcc((cur) => (cur === id ? cur : id));
@@ -134,16 +138,59 @@ export default function ProductPage() {
               <span>Max {maxQty} per order</span>
             </div>
 
-            {sizes.length ? (
+            {sizes.length || sizeChart ? (
               <div className="size-row">
-                <label>Size</label>
-                <div className="size-options">
-                  {sizes.map((s) => (
-                    <button key={s} type="button" className={s === size ? "active" : ""} onClick={() => setSize(s)}>
-                      {s}
+                <div className="size-row-head">
+                  {sizes.length ? <label>Size</label> : null}
+                  {sizeChart ? (
+                    <button
+                      type="button"
+                      className="size-chart-link"
+                      onClick={() => setShowChart((v) => !v)}
+                    >
+                      Size chart
                     </button>
-                  ))}
+                  ) : null}
                 </div>
+                {sizes.length ? (
+                  <div className="size-options">
+                    {sizes.map((s) => (
+                      <button key={s} type="button" className={s === size ? "active" : ""} onClick={() => setSize(s)}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {showChart && sizeChart ? (
+                  <div className="pdp-size-inline">
+                    <p className="pdp-size-title">{sizeChart.title}</p>
+                    <div className="pdp-size-chart-wrap">
+                      <table className="pdp-size-chart">
+                        <thead>
+                          <tr>
+                            {sizeChart.headers.map((h) => (
+                              <th key={h}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sizeChart.rows.map((row) => (
+                            <tr
+                              key={row.size}
+                              className={rowMatchesOption(row, product.sizeOptions || "") ? "is-listed" : ""}
+                            >
+                              <td>{row.size}</td>
+                              {row.cols.map((c, i) => (
+                                <td key={i}>{c}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="pdp-size-note">{sizeChart.measure}</p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -246,6 +293,43 @@ export default function ProductPage() {
                 </div>
               ) : null}
             </div>
+            {sizeChart ? (
+              <div className={`pdp-acc-item ${openAcc === "sizechart" ? "open" : ""}`}>
+                <button type="button" onClick={() => toggleAcc("sizechart")}>
+                  Size chart
+                </button>
+                {openAcc === "sizechart" ? (
+                  <div className="pdp-acc-body">
+                    <p className="pdp-size-title">{sizeChart.title}</p>
+                    <div className="pdp-size-chart-wrap">
+                      <table className="pdp-size-chart">
+                        <thead>
+                          <tr>
+                            {sizeChart.headers.map((h) => (
+                              <th key={h}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sizeChart.rows.map((row) => (
+                            <tr
+                              key={row.size}
+                              className={rowMatchesOption(row, product.sizeOptions || "") ? "is-listed" : ""}
+                            >
+                              <td>{row.size}</td>
+                              {row.cols.map((c, i) => (
+                                <td key={i}>{c}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="pdp-size-note">{sizeChart.measure}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className={`pdp-acc-item ${openAcc === "delivery" ? "open" : ""}`}>
               <button type="button" onClick={() => toggleAcc("delivery")}>
                 Delivery &amp; returns

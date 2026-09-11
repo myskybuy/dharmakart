@@ -37,7 +37,11 @@ export async function POST(req: NextRequest) {
     data: { otpCode: otp, otpExpiresAt: new Date(Date.now() + OTP_TTL_MS) },
   });
 
-  await sendLoginOtpEmail(user, otp);
+  try {
+    await sendLoginOtpEmail(user, otp);
+  } catch {
+    return NextResponse.json({ error: "Could not send OTP email. Please try again." }, { status: 503 });
+  }
 
   return NextResponse.json({ success: true, otpRequired: true, email: cleanEmail });
 }

@@ -851,6 +851,12 @@ header.site-header {
 }
 .product-desc { font-size: 14px; color: var(--color-muted); line-height: 1.7; margin: 0 0 14px; }
 .size-row { margin-bottom: 18px; }
+.size-row-head { display: flex; align-items: center; justify-content: flex-start; gap: 10px; margin-bottom: 8px; }
+.size-row-head label { margin-bottom: 0; }
+.size-chart-link {
+  background: none; border: none; padding: 0; font-size: 13px; font-weight: 700;
+  color: var(--color-accent-dark); text-decoration: underline; text-underline-offset: 3px;
+}
 .size-row label, .qty-row label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
 .size-options { display: flex; gap: 8px; flex-wrap: wrap; }
 .size-options button {
@@ -887,6 +893,18 @@ header.site-header {
 .pdp-acc-body h3 { font-size: 14px; margin: 4px 0 8px; }
 .pdp-acc-body ul { margin: 0; padding-left: 18px; color: var(--color-muted); font-size: 14px; line-height: 1.7; }
 .pdp-acc-body a { color: var(--color-primary); font-weight: 600; }
+.pdp-size-title { font-size: 14px; font-weight: 700; margin: 0 0 10px; }
+.pdp-size-inline { margin-top: 12px; padding: 12px; background: #faf8f3; border: 1px solid var(--color-border); border-radius: 8px; }
+.pdp-size-chart-wrap { overflow-x: auto; }
+.pdp-size-chart {
+  width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 10px;
+}
+.pdp-size-chart th, .pdp-size-chart td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--color-border);
+}
+.pdp-size-chart th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--color-muted); }
+.pdp-size-chart tr.is-listed td { font-weight: 700; background: #fff8e8; }
+.pdp-size-note { margin: 0; font-size: 13px; color: var(--color-muted); line-height: 1.55; }
 .pdp-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin: 0; }
 .pdp-specs div { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid #f1f3f6; }
 .pdp-specs dt { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--color-muted); }
