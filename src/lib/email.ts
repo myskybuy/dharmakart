@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { orderCode } from "./order-code";
 
 const EMAIL_ENABLED = String(process.env.EMAIL_ENABLED || "false").toLowerCase() === "true";
 const EMAIL_USER = process.env.EMAIL_USER || "";
@@ -36,12 +37,12 @@ export async function sendOrderConfirmationEmail(order: OrderEmail) {
   await transporter.sendMail({
     from: `"DharmaKart" <${EMAIL_USER}>`,
     to: order.email,
-    subject: `Order #${order.id} confirmed — DharmaKart`,
+    subject: `Order ${orderCode(order.id)} confirmed — DharmaKart`,
     html: `
       <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:0 auto;">
         <h2 style="color:#0d5c53;">Your order successfully completed ✅</h2>
         <p>Hi ${order.customerName}, thanks for shopping at DharmaKart.</p>
-        <p><strong>Order #${order.id}</strong> · ${order.paymentMethod}</p>
+        <p><strong>${orderCode(order.id)}</strong> · ${order.paymentMethod}</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">${itemsHTML}</table>
         <p style="font-size:18px;font-weight:700;">Total: ₹${order.total}</p>
       </div>
