@@ -138,19 +138,17 @@ export default function ProductPage() {
               <span>Max {maxQty} per order</span>
             </div>
 
-            {sizes.length || sizeChart ? (
+            {sizeChart ? (
               <div className="size-row">
                 <div className="size-row-head">
                   {sizes.length ? <label>Size</label> : null}
-                  {sizeChart ? (
-                    <button
-                      type="button"
-                      className="size-chart-link"
-                      onClick={() => setShowChart((v) => !v)}
-                    >
-                      Size chart
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="size-chart-link"
+                    onClick={() => setShowChart((v) => !v)}
+                  >
+                    Size chart
+                  </button>
                 </div>
                 {sizes.length ? (
                   <div className="size-options">

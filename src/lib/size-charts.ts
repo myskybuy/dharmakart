@@ -14,6 +14,7 @@ type ChartProduct = {
   name: string;
   category: string;
   sizeOptions?: string;
+  description?: string;
 };
 
 function gender(category: string): "men" | "women" | "unisex" {
@@ -25,35 +26,57 @@ function gender(category: string): "men" | "women" | "unisex" {
 
 export function sizeChartKind(p: ChartProduct): SizeChartKind {
   const cat = (p.category || "").toLowerCase();
-  const name = (p.name || "").toLowerCase();
+  // Search title + description together: several product titles are truncated
+  // mid-word in the DB (e.g. "...PolyViscose Trou"), so the full word often only
+  // survives in the description.
+  const text = `${p.name || ""} ${p.description || ""}`.toLowerCase();
 
   if (cat.includes("bag") || cat.includes("wallet") || cat.includes("luggage")) return "none";
   if (cat.includes("jewel")) return "none";
-  if (/(sunglass|eyewear|spectacl|shade|\bglasses?\b|\bbelts?\b)/.test(name)) return "none";
-  if (cat.includes("accessor") && !/(shirt|pant|jean|trouser|shoe)/.test(name)) return "none";
+  if (/(sunglass|eyewear|spectacl|shade|\bglasses?\b|\blens(es)?\b|\bbelts?\b)/.test(text)) return "none";
 
-  if (cat.includes("shoe") || cat.includes("footwear") || /(shoe|loafer|sneaker|sandal|slipper|footwear)/.test(name)) {
+  // Items that are worn/carried but don't have a meaningful fitted-size chart:
+  // caps/hats, socks, innerwear, jewellery-type accessories, sarees (free-size /
+  // unstitched), and anything the listing itself calls free/one/adjustable size.
+  if (
+    /(\bcaps?\b|\bhats?\b|\bsocks?\b|\bbriefs?\b|\bunderwear\b|\binnerwear\b|tie\s?pin|brooch|necklace|earring|bracelet|bangle|pendant|\bring\b|choker|anklet|\bsarees?\b|\bsaris?\b)/.test(
+      text
+    )
+  ) {
+    return "none";
+  }
+  if (/(free size|one size|adjustable size)/.test(text)) return "none";
+
+  if (cat.includes("accessor") && !/(shirt|pant|jean|trouser|shoe)/.test(text)) return "none";
+
+  if (cat.includes("shoe") || cat.includes("footwear") || /(shoe|loafer|sneaker|sandal|slipper|footwear)/.test(text)) {
     return "footwear";
   }
-  if (cat.includes("kid")) return "kids";
 
-  if (/(jean|trouser|pants?\b|jogger|track\s?pant|shorts?|palazzo|legging|pajama|pyjama|lounge)/.test(name)) {
-    return "bottoms";
-  }
-  if (/(blazer|waistcoat|jacket|shrug|lehenga|salwar|sharara|\bsuits?\b)/.test(name)) {
-    return "outer";
-  }
-  if (/(shirt|t-?shirt|polo|kurta|blouse|tunic|sweater|hoodie|sweatshirt|thermal|top\b|kurti)/.test(name)) {
-    return "shirt";
-  }
-  if (cat.includes("clothing")) return "shirt";
-
+  // Numeric sizeOptions (e.g. "4,5,6,7,8") is a strong footwear signal on its own —
+  // check it before the "kid" catch-all so a shoe sitting under a kids/misc
+  // category (identified only by its model name, e.g. "GO Walk Flex") still gets
+  // the footwear chart instead of the kids height chart.
   const opts = (p.sizeOptions || "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  if (opts.some((o) => /^(xxs|xs|s|m|l|xl|xxl|2xl|3xl)$/.test(o))) return "shirt";
   if (opts.length && opts.every((o) => /^\d+(\.\d+)?$/.test(o))) return "footwear";
+
+  if (cat.includes("kid")) return "kids";
+
+  if (/(jean|trouser|pants?\b|jogger|track\s?pant|shorts?|palazzo|legging|pajama|pyjama|lounge)/.test(text)) {
+    return "bottoms";
+  }
+  if (/(blazer|waistcoat|jacket|shrug|lehenga|salwar|sharara|\bsuits?\b)/.test(text)) {
+    return "outer";
+  }
+  if (/(shirt|t-?shirt|polo|kurta|blouse|tunic|sweater|hoodie|sweatshirt|thermal|top\b|kurti)/.test(text)) {
+    return "shirt";
+  }
+  if (cat.includes("clothing")) return "shirt";
+
+  if (opts.some((o) => /^(xxs|xs|s|m|l|xl|xxl|2xl|3xl)$/.test(o))) return "shirt";
   return "none";
 }
 
