@@ -251,28 +251,56 @@ export default function CheckoutPage({
                 <span>Total</span>
                 <span>₹{total}</span>
               </div>
-              <div className="payment-options">
+              <div className="payment-options" role="radiogroup" aria-label="Payment method">
                 <div className="payment-options-title">Payment method</div>
-                <label className="payment-option">
-                  <input type="radio" name="pay" checked={paymentMethod === "EASEBUZZ"} onChange={() => setPaymentMethod("EASEBUZZ")} />
-                  <span>
-                    <strong>Pay online</strong>
-                    <small>UPI, cards, netbanking &amp; wallets via Easebuzz</small>
-                  </span>
-                </label>
-                <label className="payment-option">
-                  <input type="radio" name="pay" checked={paymentMethod === "COD"} onChange={() => setPaymentMethod("COD")} />
-                  <span>
-                    <strong>Cash on Delivery</strong>
-                    <small>Pay when your order arrives</small>
-                  </span>
-                </label>
+                <div className="payment-options-grid">
+                  <label className={`payment-option ${paymentMethod === "EASEBUZZ" ? "is-selected" : ""}`}>
+                    <input type="radio" name="pay" checked={paymentMethod === "EASEBUZZ"} onChange={() => setPaymentMethod("EASEBUZZ")} />
+                    <span className="payment-option-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 9.5h19M6.5 15h4" /></svg>
+                    </span>
+                    <span className="payment-option-body">
+                      <span className="payment-option-head">
+                        <strong>Pay online</strong>
+                        <span className="payment-option-badge">Instant confirmation</span>
+                      </span>
+                      <small>UPI, cards, netbanking &amp; wallets</small>
+                      <span className="payment-option-chips">
+                        <span>UPI</span><span>Cards</span><span>Netbanking</span><span>Wallets</span>
+                      </span>
+                    </span>
+                  </label>
+                  <label className={`payment-option ${paymentMethod === "COD" ? "is-selected" : ""}`}>
+                    <input type="radio" name="pay" checked={paymentMethod === "COD"} onChange={() => setPaymentMethod("COD")} />
+                    <span className="payment-option-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2" /><circle cx="12" cy="12" r="2.6" /><path d="M6 9.5v5M18 9.5v5" /></svg>
+                    </span>
+                    <span className="payment-option-body">
+                      <span className="payment-option-head">
+                        <strong>Cash on Delivery</strong>
+                      </span>
+                      <small>Pay in cash or UPI when your order arrives</small>
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
 
-            <button className="btn btn-accent" style={{ marginTop: 20, width: "100%" }} onClick={placeOrder} disabled={placing}>
-              {placing ? "Please wait…" : paymentMethod === "EASEBUZZ" ? `Pay ₹${total}` : "Place order (COD)"}
+            <button className="btn btn-accent checkout-pay-btn" onClick={placeOrder} disabled={placing}>
+              {placing ? (
+                "Please wait…"
+              ) : paymentMethod === "EASEBUZZ" ? (
+                <>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></svg>
+                  Pay ₹{total} securely
+                </>
+              ) : (
+                `Place order · ₹${total} on delivery`
+              )}
             </button>
+            {paymentMethod === "EASEBUZZ" ? (
+              <p className="checkout-pay-note">You&apos;ll be redirected to Easebuzz to complete the payment securely.</p>
+            ) : null}
           </>
         ) : authChecked ? (
           <p style={{ color: "var(--color-muted)" }}>Complete login in the popup above to continue checkout.</p>
