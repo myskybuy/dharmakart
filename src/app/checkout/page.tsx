@@ -8,6 +8,7 @@ import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import StoreShell from "@/components/StoreShell";
 import { useCart } from "@/components/CartProvider";
+import { orderCode } from "@/lib/order-code";
 import { toast } from "sonner";
 
 type User = { id: number; name: string; email: string; phone?: string };
@@ -155,7 +156,7 @@ export default function CheckoutPage({
         <div className="cart-page" style={{ textAlign: "center", padding: "40px 0" }}>
           <h2 style={{ color: "var(--color-primary)" }}>Your order is successfully completed</h2>
           <p>
-            Your order id is <strong>{confirmedId}</strong>. We&apos;ve emailed you a confirmation.
+            Your order id is <strong>{orderCode(confirmedId)}</strong>. We&apos;ve emailed you a confirmation.
           </p>
           <Link href="/shop" className="btn btn-accent">
             Continue shopping

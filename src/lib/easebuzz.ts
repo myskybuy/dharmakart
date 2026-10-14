@@ -121,6 +121,21 @@ export function verifyResponseHash(resp: EasebuzzResponse) {
 
 const FAILED_STATUSES = new Set(["failure", "usercancelled", "dropped", "bounced"]);
 
+const MODE_LABELS: Record<string, string> = {
+  UPI: "UPI",
+  CC: "Credit Card",
+  DC: "Debit Card",
+  NB: "Net Banking",
+  MW: "Wallet",
+  EMI: "EMI",
+  PL: "Pay Later",
+};
+
+function paymentModeLabel(mode?: string) {
+  const key = (mode || "").toUpperCase();
+  return MODE_LABELS[key] || key || "Online";
+}
+
 /**
  * Applies a verified Easebuzz response (browser callback or webhook) to its order.
  * Idempotent: the confirmation email goes out only on the first transition to paid.
@@ -138,9 +153,11 @@ export async function settleEasebuzzPayment(resp: EasebuzzResponse) {
     if (Math.abs(parseFloat(resp.amount) - order.total) > 0.01) {
       return { ok: false as const, reason: "amount", orderId: order.id };
     }
+    const paidAt = new Date();
+    const paymentMode = paymentModeLabel(resp.mode);
     const updated = await prisma.order.updateMany({
       where: { id: order.id, paymentStatus: { not: "paid" } },
-      data: { paymentStatus: "paid", status: "Confirmed", easebuzzPaymentId: resp.easepayid || null },
+      data: { paymentStatus: "paid", status: "Confirmed", easebuzzPaymentId: resp.easepayid || null, paymentMode, paidAt },
     });
     if (updated.count === 1) {
       sendOrderConfirmationEmail({
@@ -149,7 +166,13 @@ export async function settleEasebuzzPayment(resp: EasebuzzResponse) {
         customerName: order.customerName,
         items: order.items as { name: string; qty: number; salePrice: number }[],
         total: order.total,
-        paymentMethod: "Online (Easebuzz)",
+        subtotal: order.subtotal,
+        discount: order.discount,
+        couponCode: order.couponCode,
+        address: order.address,
+        phone: order.phone,
+        paymentMethod: `Paid online · ${paymentMode}`,
+        payment: { paymentId: resp.easepayid || "—", txnId: order.easebuzzTxnId || "", mode: paymentMode, paidAt },
       });
     }
     return { ok: true as const, paid: true, orderId: order.id };

@@ -127,6 +127,11 @@ export async function POST(req: NextRequest) {
       customerName: order.customerName,
       items: priced.items,
       total: order.total,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      couponCode: order.couponCode,
+      address: order.address,
+      phone: order.phone,
       paymentMethod: "Cash on Delivery",
     });
 
