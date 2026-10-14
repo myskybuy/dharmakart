@@ -18,7 +18,7 @@ type Product = {
 
 type Category = { id: number; name: string; image: string };
 type Coupon = { id: number; code: string; type: string; value: number; minOrder: number; active: boolean; expiry: string | null };
-type Order = { id: number; customerName: string; email: string; address: string; phone: string; total: number; couponCode?: string; discount?: number; status: string };
+type Order = { id: number; customerName: string; email: string; address: string; phone: string; total: number; couponCode?: string; discount?: number; status: string; paymentMethod: string; paymentStatus: string };
 type User = { id: number; name: string; email: string };
 
 export default function AdminDashboard() {
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
             <div>
               <div className="top-actions"><h1>Orders</h1></div>
               <table>
-                <thead><tr><th>#</th><th>Customer</th><th>Phone</th><th>Total</th><th>Status</th><th>Update</th></tr></thead>
+                <thead><tr><th>#</th><th>Customer</th><th>Phone</th><th>Total</th><th>Payment</th><th>Status</th><th>Update</th></tr></thead>
                 <tbody>
                   {orders.map((o) => (
                     <tr key={o.id}>
@@ -275,6 +275,7 @@ export default function AdminDashboard() {
                       <td>{o.customerName}<br /><span style={{ color: "var(--a-muted)", fontSize: 12 }}>{o.email}</span></td>
                       <td>{o.phone}</td>
                       <td>₹{o.total}</td>
+                      <td>{o.paymentMethod === "EASEBUZZ" ? "Online" : o.paymentMethod}<br /><span style={{ color: "var(--a-muted)", fontSize: 12 }}>{o.paymentStatus}</span></td>
                       <td>{o.status}</td>
                       <td>
                         <select defaultValue={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)}>

@@ -1,52 +1,43 @@
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { evaluateCoupon } from "@/lib/coupons";
 import { prisma } from "@/lib/db";
+import { buildTxnId, initiatePayment, isEasebuzzConfigured } from "@/lib/easebuzz";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/password";
-import { getRazorpay, isRazorpayConfigured } from "@/lib/razorpay";
 import { getSession } from "@/lib/session";
 
 type OrderItem = { id: number; name: string; image: string; salePrice: number; qty: number };
 
-async function createOrderRecord(
-  body: {
-    items: OrderItem[];
-    customerName: string;
-    phone: string;
-    address: string;
-    email?: string;
-    couponCode?: string;
-    discount?: number;
-    paymentMethod: string;
-    paymentStatus?: string;
-    razorpayOrderId?: string;
-    razorpayPaymentId?: string;
-  },
-  userId: number
-) {
-  const subtotal = body.items.reduce((sum, item) => sum + item.salePrice * item.qty, 0);
-  const appliedDiscount = body.discount && body.discount > 0 ? body.discount : 0;
-  const total = Math.max(0, subtotal - appliedDiscount);
+/** Re-prices the cart from the database so the client can't change what gets charged. */
+async function priceCart(rawItems: OrderItem[], couponCode?: string) {
+  const ids = rawItems.map((i) => Number(i.id));
+  const products = await prisma.product.findMany({ where: { id: { in: ids } } });
+  const byId = new Map(products.map((p) => [p.id, p]));
 
-  return prisma.order.create({
-    data: {
-      userId,
-      items: body.items,
-      customerName: body.customerName.trim(),
-      phone: normalizePhone(body.phone),
-      address: body.address.trim(),
-      email: (body.email || "").trim().toLowerCase(),
-      subtotal,
-      couponCode: body.couponCode || "",
-      discount: appliedDiscount,
-      total,
-      paymentMethod: body.paymentMethod,
-      paymentStatus: body.paymentStatus || "pending",
-      razorpayOrderId: body.razorpayOrderId || null,
-      razorpayPaymentId: body.razorpayPaymentId || null,
-      status: body.paymentMethod === "RAZORPAY" ? "Confirmed" : "Pending",
-    },
-  });
+  const items: OrderItem[] = [];
+  for (const raw of rawItems) {
+    const product = byId.get(Number(raw.id));
+    const qty = Math.floor(Number(raw.qty));
+    if (!product || !(qty > 0)) return null;
+    items.push({ id: product.id, name: product.name, image: product.image, salePrice: product.salePrice, qty });
+  }
+
+  const subtotal = items.reduce((sum, item) => sum + item.salePrice * item.qty, 0);
+  let discount = 0;
+  let appliedCode = "";
+  if (couponCode) {
+    const coupon = await evaluateCoupon(couponCode, subtotal);
+    if (coupon.ok) {
+      discount = coupon.discount;
+      appliedCode = coupon.code;
+    }
+  }
+
+  return { items, subtotal, discount, couponCode: appliedCode, total: Math.max(0, subtotal - discount) };
+}
+
+function siteUrl(req: NextRequest) {
+  return (process.env.SITE_URL || req.nextUrl.origin).replace(/\/$/, "");
 }
 
 export async function POST(req: NextRequest) {
@@ -57,9 +48,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { items, customerName, phone, address, email, couponCode, discount, paymentMethod } = body;
+    const { items, customerName, phone, address, email, couponCode, paymentMethod } = body;
 
-    if (!items || items.length === 0) return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+    if (!Array.isArray(items) || items.length === 0) return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     if (!customerName?.trim() || !phone?.trim() || !address?.trim()) {
       return NextResponse.json({ error: "Customer details incomplete" }, { status: 400 });
     }
@@ -70,69 +61,71 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
     }
 
-    const method = paymentMethod === "RAZORPAY" ? "RAZORPAY" : "COD";
-
-    if (method === "RAZORPAY") {
-      if (!isRazorpayConfigured()) {
-        return NextResponse.json({ error: "Online payment is not configured yet" }, { status: 503 });
-      }
-
-      const subtotal = items.reduce((sum: number, item: OrderItem) => sum + item.salePrice * item.qty, 0);
-      const appliedDiscount = discount && discount > 0 ? discount : 0;
-      const total = Math.max(0, subtotal - appliedDiscount);
-
-      const razorpay = getRazorpay()!;
-      const rpOrder = await razorpay.orders.create({
-        amount: total * 100,
-        currency: "INR",
-        receipt: `msb_${Date.now()}`,
-      });
-
-      const pending = await createOrderRecord(
-        {
-          items,
-          customerName,
-          phone,
-          address,
-          email,
-          couponCode,
-          discount,
-          paymentMethod: "RAZORPAY",
-          paymentStatus: "pending",
-          razorpayOrderId: rpOrder.id,
-        },
-        session.userId
-      );
-
-      return NextResponse.json({
-        success: true,
-        orderId: pending.id,
-        razorpayOrderId: rpOrder.id,
-        amount: total,
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      });
+    const priced = await priceCart(items, couponCode);
+    if (!priced) {
+      return NextResponse.json({ error: "Some items in your cart are no longer available" }, { status: 400 });
     }
 
-    const order = await createOrderRecord(
-      {
-        items,
-        customerName,
-        phone,
-        address,
-        email,
-        couponCode,
-        discount,
-        paymentMethod: "COD",
-        paymentStatus: "pending",
-      },
-      session.userId
-    );
+    const method = paymentMethod === "EASEBUZZ" ? "EASEBUZZ" : "COD";
+    const orderData = {
+      userId: session.userId,
+      items: priced.items,
+      customerName: customerName.trim(),
+      phone: normalizePhone(phone),
+      address: address.trim(),
+      email: (email || "").trim().toLowerCase(),
+      subtotal: priced.subtotal,
+      couponCode: priced.couponCode,
+      discount: priced.discount,
+      total: priced.total,
+      paymentMethod: method,
+      paymentStatus: "pending",
+      status: "Pending",
+    };
+
+    if (method === "EASEBUZZ") {
+      if (!isEasebuzzConfigured()) {
+        return NextResponse.json({ error: "Online payment is not configured yet" }, { status: 503 });
+      }
+      if (!orderData.email) {
+        return NextResponse.json({ error: "Email is required for online payment" }, { status: 400 });
+      }
+      if (priced.total < 1) {
+        return NextResponse.json({ error: "Order total is too low for online payment. Please choose Cash on Delivery." }, { status: 400 });
+      }
+
+      const order = await prisma.order.create({ data: orderData });
+      const txnid = buildTxnId(order.id);
+      await prisma.order.update({ where: { id: order.id }, data: { easebuzzTxnId: txnid } });
+
+      const callback = `${siteUrl(req)}/api/payments/easebuzz/callback`;
+      try {
+        const payUrl = await initiatePayment({
+          txnid,
+          amount: priced.total,
+          productinfo: `DharmaKart order ${order.id}`,
+          firstname: orderData.customerName,
+          email: orderData.email,
+          phone: orderData.phone,
+          surl: callback,
+          furl: callback,
+          udf1: String(order.id),
+        });
+        return NextResponse.json({ success: true, orderId: order.id, payUrl });
+      } catch (err) {
+        await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "failed", status: "Cancelled" } });
+        console.error("Easebuzz initiate failed:", err);
+        return NextResponse.json({ error: "Unable to start online payment. Please try again." }, { status: 502 });
+      }
+    }
+
+    const order = await prisma.order.create({ data: orderData });
 
     sendOrderConfirmationEmail({
       id: order.id,
       email: order.email,
       customerName: order.customerName,
-      items: items as OrderItem[],
+      items: priced.items,
       total: order.total,
       paymentMethod: "Cash on Delivery",
     });
@@ -140,59 +133,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, orderId: order.id });
   } catch {
     return NextResponse.json({ error: "Unable to place order. Please try again." }, { status: 500 });
-  }
-}
-
-export async function PUT(req: NextRequest) {
-  try {
-    const session = await getSession();
-    if (!session.userId) {
-      return NextResponse.json({ error: "Please log in to complete payment" }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = body;
-
-    if (!orderId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return NextResponse.json({ error: "Payment verification data incomplete" }, { status: 400 });
-    }
-
-    const secret = process.env.RAZORPAY_KEY_SECRET || "";
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest("hex");
-
-    if (expected !== razorpaySignature) {
-      return NextResponse.json({ error: "Payment verification failed" }, { status: 400 });
-    }
-
-    const order = await prisma.order.findUnique({ where: { id: Number(orderId) } });
-    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    if (order.userId !== session.userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
-
-    const updated = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentStatus: "paid",
-        razorpayPaymentId,
-        status: "Confirmed",
-      },
-    });
-
-    sendOrderConfirmationEmail({
-      id: updated.id,
-      email: updated.email,
-      customerName: updated.customerName,
-      items: updated.items as OrderItem[],
-      total: updated.total,
-      paymentMethod: "Online (Razorpay)",
-    });
-
-    return NextResponse.json({ success: true, orderId: updated.id });
-  } catch {
-    return NextResponse.json({ error: "Payment verification failed. Please contact support." }, { status: 500 });
   }
 }

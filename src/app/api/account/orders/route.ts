@@ -7,7 +7,8 @@ export async function GET() {
   if (!session.userId) return NextResponse.json({ error: "Please log in first" }, { status: 401 });
 
   const orders = await prisma.order.findMany({
-    where: { userId: session.userId },
+    // Hide online orders whose payment never completed (abandoned or failed checkouts).
+    where: { userId: session.userId, NOT: { paymentMethod: "EASEBUZZ", paymentStatus: { not: "paid" } } },
     orderBy: { createdAt: "desc" },
   });
 

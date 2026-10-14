@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Script from "next/script";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import AuthModal from "@/components/AuthModal";
 import PageLoader from "@/components/PageLoader";
 import SiteFooter from "@/components/SiteFooter";
@@ -10,12 +9,6 @@ import SiteHeader from "@/components/SiteHeader";
 import StoreShell from "@/components/StoreShell";
 import { useCart } from "@/components/CartProvider";
 import { toast } from "sonner";
-
-declare global {
-  interface Window {
-    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
-  }
-}
 
 type User = { id: number; name: string; email: string; phone?: string };
 
@@ -28,8 +21,15 @@ function formatSavedAddress(a: {
   return `${a.line1}, ${a.city}, ${a.state} - ${a.pincode}`;
 }
 
-export default function CheckoutPage() {
-  const { cart, cartTotal, clearCart } = useCart();
+export default function CheckoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // Easebuzz returns here via /api/payments/easebuzz/callback with ?payment=success|failed
+  const { payment, order } = use(searchParams);
+  const paidOrderId = payment === "success" && order ? Number(order) : null;
+  const { cart, cartTotal, clearCart, hydrated } = useCart();
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [name, setName] = useState("");
@@ -41,8 +41,15 @@ export default function CheckoutPage() {
   const [discount, setDiscount] = useState(0);
   const [appliedCode, setAppliedCode] = useState("");
   const [successId, setSuccessId] = useState<number | null>(null);
-  const [razorpayEnabled, setRazorpayEnabled] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "RAZORPAY">("COD");
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "EASEBUZZ">("EASEBUZZ");
+  const [placing, setPlacing] = useState(false);
+
+  // Wait for the cart to hydrate from storage, otherwise clearCart gets overwritten.
+  useEffect(() => {
+    if (!hydrated || !payment) return;
+    if (paidOrderId) clearCart();
+    else toast.error("Payment failed or was cancelled. Your cart is saved — please try again.");
+  }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -65,7 +72,6 @@ export default function CheckoutPage() {
         }
       })
       .finally(() => setAuthChecked(true));
-    setRazorpayEnabled(!!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID);
   }, []);
 
   const subtotal = cartTotal;
@@ -101,10 +107,11 @@ export default function CheckoutPage() {
       toast.error("Please fill all required fields");
       return;
     }
-    if (paymentMethod === "RAZORPAY" && !razorpayEnabled) {
-      toast.error("Online payment is not configured yet. Choose Cash on Delivery or contact support.");
+    if (paymentMethod === "EASEBUZZ" && !email) {
+      toast.error("Please enter your email for online payment");
       return;
     }
+    if (placing) return;
 
     const payload = {
       items: cart,
@@ -113,67 +120,42 @@ export default function CheckoutPage() {
       address,
       email,
       couponCode: appliedCode,
-      discount,
       paymentMethod,
     };
 
+    setPlacing(true);
     const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) {
+    }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
+    if (!res?.ok) {
+      setPlacing(false);
       toast.error(data.error || "Order failed");
       return;
     }
 
-    if (paymentMethod === "RAZORPAY" && data.razorpayOrderId && data.key) {
-      const rzp = new window.Razorpay({
-        key: data.key,
-        amount: data.amount * 100,
-        currency: "INR",
-        name: "DharmaKart",
-        description: `Order #${data.orderId}`,
-        order_id: data.razorpayOrderId,
-        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-          const verify = await fetch("/api/orders", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: data.orderId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
-          const verifyData = await verify.json();
-          if (verify.ok) {
-            clearCart();
-            setSuccessId(verifyData.orderId);
-          } else {
-            toast.error(verifyData.error || "Payment verification failed");
-          }
-        },
-        prefill: { name, email, contact: phone },
-        theme: { color: "#0d5c53" },
-      });
-      rzp.open();
+    if (paymentMethod === "EASEBUZZ" && data.payUrl) {
+      // Cart is cleared only after Easebuzz confirms payment and redirects back.
+      window.location.href = data.payUrl;
       return;
     }
 
+    setPlacing(false);
     clearCart();
     setSuccessId(data.orderId);
   }
 
-  if (successId) {
+  const confirmedId = successId ?? paidOrderId;
+  if (confirmedId) {
     return (
       <StoreShell>
         <SiteHeader showSearch={false} />
         <div className="cart-page" style={{ textAlign: "center", padding: "40px 0" }}>
           <h2 style={{ color: "var(--color-primary)" }}>Your order is successfully completed</h2>
           <p>
-            Your order id is <strong>{successId}</strong>. We&apos;ve emailed you a confirmation.
+            Your order id is <strong>{confirmedId}</strong>. We&apos;ve emailed you a confirmation.
           </p>
           <Link href="/shop" className="btn btn-accent">
             Continue shopping
@@ -186,7 +168,6 @@ export default function CheckoutPage() {
 
   return (
     <StoreShell>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <SiteHeader showSearch={false} />
       <AuthModal
         open={showAuthModal}
@@ -272,7 +253,14 @@ export default function CheckoutPage() {
               <div className="payment-options">
                 <div className="payment-options-title">Payment method</div>
                 <label className="payment-option">
-                  <input type="radio" name="pay" checked readOnly />
+                  <input type="radio" name="pay" checked={paymentMethod === "EASEBUZZ"} onChange={() => setPaymentMethod("EASEBUZZ")} />
+                  <span>
+                    <strong>Pay online</strong>
+                    <small>UPI, cards, netbanking &amp; wallets via Easebuzz</small>
+                  </span>
+                </label>
+                <label className="payment-option">
+                  <input type="radio" name="pay" checked={paymentMethod === "COD"} onChange={() => setPaymentMethod("COD")} />
                   <span>
                     <strong>Cash on Delivery</strong>
                     <small>Pay when your order arrives</small>
@@ -281,8 +269,8 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <button className="btn btn-accent" style={{ marginTop: 20, width: "100%" }} onClick={placeOrder}>
-              Place order (COD)
+            <button className="btn btn-accent" style={{ marginTop: 20, width: "100%" }} onClick={placeOrder} disabled={placing}>
+              {placing ? "Please wait…" : paymentMethod === "EASEBUZZ" ? `Pay ₹${total}` : "Place order (COD)"}
             </button>
           </>
         ) : authChecked ? (
