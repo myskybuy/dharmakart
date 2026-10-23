@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateCoupon } from "@/lib/coupons";
 import { prisma } from "@/lib/db";
+import { isHiddenCategory } from "@/lib/hidden-categories";
 import { buildTxnId, initiatePayment, isEasebuzzConfigured } from "@/lib/easebuzz";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/password";
@@ -18,7 +19,7 @@ async function priceCart(rawItems: OrderItem[], couponCode?: string) {
   for (const raw of rawItems) {
     const product = byId.get(Number(raw.id));
     const qty = Math.floor(Number(raw.qty));
-    if (!product || !(qty > 0)) return null;
+    if (!product || isHiddenCategory(product.category) || !(qty > 0)) return null;
     items.push({ id: product.id, name: product.name, image: product.image, salePrice: product.salePrice, qty });
   }
 
