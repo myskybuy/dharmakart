@@ -1,12 +1,15 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
+import { HIDDEN_CATEGORIES, isHiddenCategory } from "./hidden-categories";
 
 export type ProductFilters = {
   category?: string;
   sale?: boolean;
   q?: string;
   excludeId?: number;
+  ids?: number[];
   limit?: number;
+  includeHidden?: boolean;
 };
 
 export async function listProducts(filters: ProductFilters = {}) {
@@ -14,6 +17,11 @@ export async function listProducts(filters: ProductFilters = {}) {
 
   if (filters.category) where.category = filters.category;
   if (filters.excludeId) where.id = { not: filters.excludeId };
+  if (filters.ids) where.id = { in: filters.ids };
+  if (!filters.includeHidden) {
+    if (filters.category && isHiddenCategory(filters.category)) return [];
+    if (!filters.category) where.category = { notIn: HIDDEN_CATEGORIES };
+  }
 
   if (filters.q) {
     const q = filters.q.trim();
@@ -39,8 +47,10 @@ export async function listProducts(filters: ProductFilters = {}) {
   return products;
 }
 
-export async function getProduct(id: number) {
-  return prisma.product.findUnique({ where: { id } });
+export async function getProduct(id: number, includeHidden = false) {
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (product && !includeHidden && isHiddenCategory(product.category)) return null;
+  return product;
 }
 
 export async function getBanner() {
