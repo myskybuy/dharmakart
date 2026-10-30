@@ -6,7 +6,7 @@ import { markOrderFailed, markOrderPaid } from "./payments";
 // https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/create-payment
 
 function getConfig() {
-  const prod = process.env.PHONEPE_ENV === "prod";
+  const prod = ["prod", "production", "live"].includes((process.env.PHONEPE_ENV || "").trim().toLowerCase());
   return {
     clientId: process.env.PHONEPE_CLIENT_ID || "",
     clientSecret: process.env.PHONEPE_CLIENT_SECRET || "",
