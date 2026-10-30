@@ -27,7 +27,7 @@ export default function CheckoutPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // Easebuzz returns here via /api/payments/easebuzz/callback with ?payment=success|failed
+  // The gateway return route sends the customer back here with ?payment=success|pending|failed
   const { payment, order } = use(searchParams);
   const paidOrderId = payment === "success" && order ? Number(order) : null;
   const { cart, cartTotal, clearCart, hydrated } = useCart();
@@ -42,13 +42,15 @@ export default function CheckoutPage({
   const [discount, setDiscount] = useState(0);
   const [appliedCode, setAppliedCode] = useState("");
   const [successId, setSuccessId] = useState<number | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"COD" | "EASEBUZZ">("EASEBUZZ");
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "PHONEPE">("PHONEPE");
   const [placing, setPlacing] = useState(false);
 
   // Wait for the cart to hydrate from storage, otherwise clearCart gets overwritten.
   useEffect(() => {
     if (!hydrated || !payment) return;
     if (paidOrderId) clearCart();
+    else if (payment === "pending")
+      toast.info("Your payment is still processing. We'll confirm your order by email as soon as PhonePe completes it.", { duration: 10000 });
     else toast.error("Payment failed or was cancelled. Your cart is saved — please try again.");
   }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -108,10 +110,6 @@ export default function CheckoutPage({
       toast.error("Please fill all required fields");
       return;
     }
-    if (paymentMethod === "EASEBUZZ" && !email) {
-      toast.error("Please enter your email for online payment");
-      return;
-    }
     if (placing) return;
 
     const payload = {
@@ -137,8 +135,8 @@ export default function CheckoutPage({
       return;
     }
 
-    if (paymentMethod === "EASEBUZZ" && data.payUrl) {
-      // Cart is cleared only after Easebuzz confirms payment and redirects back.
+    if (paymentMethod === "PHONEPE" && data.payUrl) {
+      // Cart is cleared only after PhonePe confirms payment and redirects back.
       window.location.href = data.payUrl;
       return;
     }
@@ -254,8 +252,8 @@ export default function CheckoutPage({
               <div className="payment-options" role="radiogroup" aria-label="Payment method">
                 <div className="payment-options-title">Payment method</div>
                 <div className="payment-options-grid">
-                  <label className={`payment-option ${paymentMethod === "EASEBUZZ" ? "is-selected" : ""}`}>
-                    <input type="radio" name="pay" checked={paymentMethod === "EASEBUZZ"} onChange={() => setPaymentMethod("EASEBUZZ")} />
+                  <label className={`payment-option ${paymentMethod === "PHONEPE" ? "is-selected" : ""}`}>
+                    <input type="radio" name="pay" checked={paymentMethod === "PHONEPE"} onChange={() => setPaymentMethod("PHONEPE")} />
                     <span className="payment-option-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 9.5h19M6.5 15h4" /></svg>
                     </span>
@@ -264,9 +262,9 @@ export default function CheckoutPage({
                         <strong>Pay online</strong>
                         <span className="payment-option-badge">Instant confirmation</span>
                       </span>
-                      <small>UPI, cards, netbanking &amp; wallets</small>
+                      <small>PhonePe, any UPI app, cards &amp; netbanking</small>
                       <span className="payment-option-chips">
-                        <span>UPI</span><span>Cards</span><span>Netbanking</span><span>Wallets</span>
+                        <span>PhonePe</span><span>UPI</span><span>Cards</span><span>Netbanking</span>
                       </span>
                     </span>
                   </label>
@@ -289,7 +287,7 @@ export default function CheckoutPage({
             <button className="btn btn-accent checkout-pay-btn" onClick={placeOrder} disabled={placing}>
               {placing ? (
                 "Please wait…"
-              ) : paymentMethod === "EASEBUZZ" ? (
+              ) : paymentMethod === "PHONEPE" ? (
                 <>
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2" /><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" /></svg>
                   Pay ₹{total} securely
@@ -298,8 +296,8 @@ export default function CheckoutPage({
                 `Place order · ₹${total} on delivery`
               )}
             </button>
-            {paymentMethod === "EASEBUZZ" ? (
-              <p className="checkout-pay-note">You&apos;ll be redirected to Easebuzz to complete the payment securely.</p>
+            {paymentMethod === "PHONEPE" ? (
+              <p className="checkout-pay-note">You&apos;ll be redirected to PhonePe to complete the payment securely.</p>
             ) : null}
           </>
         ) : authChecked ? (

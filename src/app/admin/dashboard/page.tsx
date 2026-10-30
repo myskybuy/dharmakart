@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                       <td>{o.customerName}<br /><span style={{ color: "var(--a-muted)", fontSize: 12 }}>{o.email}</span></td>
                       <td>{o.phone}</td>
                       <td>₹{o.total}</td>
-                      <td>{o.paymentMethod === "EASEBUZZ" ? "Online" : o.paymentMethod}<br /><span style={{ color: "var(--a-muted)", fontSize: 12 }}>{o.paymentStatus}</span></td>
+                      <td>{o.paymentMethod === "PHONEPE" ? "PhonePe" : o.paymentMethod === "EASEBUZZ" ? "Easebuzz" : o.paymentMethod}<br /><span style={{ color: "var(--a-muted)", fontSize: 12 }}>{o.paymentStatus}</span></td>
                       <td>{o.status}</td>
                       <td>
                         <select defaultValue={o.status} onChange={(e) => updateOrderStatus(o.id, e.target.value)}>

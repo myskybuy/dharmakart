@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "./db";
-import { sendOrderConfirmationEmail } from "./email";
+import { markOrderFailed, markOrderPaid } from "./payments";
 
 // Easebuzz hosted checkout. Hash sequences follow the official kit:
 // https://github.com/easebuzz/paywitheasebuzz-nodejs-lib
@@ -136,10 +136,7 @@ function paymentModeLabel(mode?: string) {
   return MODE_LABELS[key] || key || "Online";
 }
 
-/**
- * Applies a verified Easebuzz response (browser callback or webhook) to its order.
- * Idempotent: the confirmation email goes out only on the first transition to paid.
- */
+/** Applies a verified Easebuzz response (browser callback or webhook) to its order. */
 export async function settleEasebuzzPayment(resp: EasebuzzResponse) {
   if (!verifyResponseHash(resp)) return { ok: false as const, reason: "hash" };
 
@@ -153,36 +150,17 @@ export async function settleEasebuzzPayment(resp: EasebuzzResponse) {
     if (Math.abs(parseFloat(resp.amount) - order.total) > 0.01) {
       return { ok: false as const, reason: "amount", orderId: order.id };
     }
-    const paidAt = new Date();
-    const paymentMode = paymentModeLabel(resp.mode);
-    const updated = await prisma.order.updateMany({
-      where: { id: order.id, paymentStatus: { not: "paid" } },
-      data: { paymentStatus: "paid", status: "Confirmed", easebuzzPaymentId: resp.easepayid || null, paymentMode, paidAt },
+    await markOrderPaid(order, {
+      paymentId: resp.easepayid || "",
+      txnRef: order.easebuzzTxnId || "",
+      mode: paymentModeLabel(resp.mode),
+      extra: { easebuzzPaymentId: resp.easepayid || null },
     });
-    if (updated.count === 1) {
-      sendOrderConfirmationEmail({
-        id: order.id,
-        email: order.email,
-        customerName: order.customerName,
-        items: order.items as { name: string; qty: number; salePrice: number }[],
-        total: order.total,
-        subtotal: order.subtotal,
-        discount: order.discount,
-        couponCode: order.couponCode,
-        address: order.address,
-        phone: order.phone,
-        paymentMethod: `Paid online · ${paymentMode}`,
-        payment: { paymentId: resp.easepayid || "—", txnId: order.easebuzzTxnId || "", mode: paymentMode, paidAt },
-      });
-    }
     return { ok: true as const, paid: true, orderId: order.id };
   }
 
   if (FAILED_STATUSES.has(status)) {
-    await prisma.order.updateMany({
-      where: { id: order.id, paymentStatus: "pending" },
-      data: { paymentStatus: "failed", status: "Cancelled", easebuzzPaymentId: resp.easepayid || null },
-    });
+    await markOrderFailed(order.id, { easebuzzPaymentId: resp.easepayid || null });
   }
   return { ok: true as const, paid: false, orderId: order.id };
 }
