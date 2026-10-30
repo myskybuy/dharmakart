@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { isHiddenCategory } from "@/lib/hidden-categories";
 import { buildTxnId, initiatePayment, isEasebuzzConfigured } from "@/lib/easebuzz";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { buildMerchantOrderId, createPayment, isPhonePeConfigured } from "@/lib/phonepe";
 import { isValidEmail, isValidPhone, normalizePhone } from "@/lib/password";
 import { getSession } from "@/lib/session";
 
@@ -67,7 +68,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Some items in your cart are no longer available" }, { status: 400 });
     }
 
-    const method = paymentMethod === "EASEBUZZ" ? "EASEBUZZ" : "COD";
+    // Easebuzz is kept but hidden; set EASEBUZZ_ENABLED="true" to accept it again.
+    const easebuzzEnabled = process.env.EASEBUZZ_ENABLED === "true";
+    const method =
+      paymentMethod === "PHONEPE" ? "PHONEPE" : paymentMethod === "EASEBUZZ" && easebuzzEnabled ? "EASEBUZZ" : paymentMethod === "COD" ? "COD" : null;
+    if (!method) {
+      return NextResponse.json({ error: "This payment method is not available" }, { status: 400 });
+    }
     const orderData = {
       userId: session.userId,
       items: priced.items,
@@ -83,6 +90,33 @@ export async function POST(req: NextRequest) {
       paymentStatus: "pending",
       status: "Pending",
     };
+
+    if (method === "PHONEPE") {
+      if (!isPhonePeConfigured()) {
+        return NextResponse.json({ error: "Online payment is not configured yet" }, { status: 503 });
+      }
+      if (priced.total < 1) {
+        return NextResponse.json({ error: "Order total is too low for online payment. Please choose Cash on Delivery." }, { status: 400 });
+      }
+
+      const order = await prisma.order.create({ data: orderData });
+      const merchantOrderId = buildMerchantOrderId(order.id);
+      await prisma.order.update({ where: { id: order.id }, data: { phonepeOrderId: merchantOrderId } });
+
+      try {
+        const payUrl = await createPayment({
+          merchantOrderId,
+          amountRupees: priced.total,
+          orderId: order.id,
+          redirectUrl: `${siteUrl(req)}/api/payments/phonepe/return?order=${order.id}`,
+        });
+        return NextResponse.json({ success: true, orderId: order.id, payUrl });
+      } catch (err) {
+        await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "failed", status: "Cancelled" } });
+        console.error("PhonePe create payment failed:", err);
+        return NextResponse.json({ error: "Unable to start online payment. Please try again." }, { status: 502 });
+      }
+    }
 
     if (method === "EASEBUZZ") {
       if (!isEasebuzzConfigured()) {

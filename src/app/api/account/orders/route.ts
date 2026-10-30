@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { ONLINE_METHODS } from "@/lib/payments";
 import { getSession } from "@/lib/session";
 
 export async function GET() {
@@ -8,7 +9,7 @@ export async function GET() {
 
   const orders = await prisma.order.findMany({
     // Hide online orders whose payment never completed (abandoned or failed checkouts).
-    where: { userId: session.userId, NOT: { paymentMethod: "EASEBUZZ", paymentStatus: { not: "paid" } } },
+    where: { userId: session.userId, NOT: { paymentMethod: { in: ONLINE_METHODS }, paymentStatus: { not: "paid" } } },
     orderBy: { createdAt: "desc" },
   });
 
